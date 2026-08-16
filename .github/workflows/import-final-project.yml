@@ -32,3 +32,4 @@ jobs:
           git add -A
           git commit -m 'Deploy final Riyadh Glass project' || exit 0
           git push
+# trigger import

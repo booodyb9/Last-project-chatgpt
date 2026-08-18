@@ -3,6 +3,7 @@ build/
 dist/
 coverage/
 .next/
+.netlify/
 .DS_Store
 *.log
 .env*

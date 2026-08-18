@@ -22,35 +22,51 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/rg-parts /tmp/rg-project
-          base='https://raw.githubusercontent.com/booodyb9/Alriyad-glass-work-netlify-/main/.upload2'
-          parts=(y00 y01 y02 y03 y04 y05 y06 y07 y08_09 y10_11 y12_13 y14_15 y16_17 y18_19 y20_21 y22_23)
-          for f in "${parts[@]}"; do
-            echo "Downloading $f"
-            curl --fail --location --retry 3 --retry-delay 2 "$base/$f" -o "/tmp/rg-parts/$f"
-            test -s "/tmp/rg-parts/$f"
-          done
-          cat $(printf '/tmp/rg-parts/%s ' "${parts[@]}") | tr -d '\n\r' > /tmp/rg-project.b64
-          base64 --decode /tmp/rg-project.b64 > /tmp/rg-project.tar.xz
-          xz --test /tmp/rg-project.tar.xz
-          tar -xJf /tmp/rg-project.tar.xz -C /tmp/rg-project
+          rm -rf /tmp/rg-source /tmp/rg-project /tmp/rg-extracted
+          mkdir -p /tmp/rg-source /tmp/rg-project /tmp/rg-extracted
+          git clone --depth 1 --branch production-clean-2026 https://github.com/booodyb9/Alriyad-glass-work-netlify-.git /tmp/rg-source
+          test -d /tmp/rg-source/.import-xz
+          cat /tmp/rg-source/.import-xz/payload.part-* > /tmp/rg-project/archive.b64
+          base64 --decode /tmp/rg-project/archive.b64 > /tmp/rg-project/archive.xz
+          xz --test /tmp/rg-project/archive.xz
+          xz --decompress --stdout /tmp/rg-project/archive.xz > /tmp/rg-project/payload
+          if unzip -tq /tmp/rg-project/payload >/dev/null 2>&1; then
+            unzip -q /tmp/rg-project/payload -d /tmp/rg-extracted
+          elif tar -tf /tmp/rg-project/payload >/dev/null 2>&1; then
+            tar -xf /tmp/rg-project/payload -C /tmp/rg-extracted
+          else
+            echo 'Unsupported recovered payload format'
+            file /tmp/rg-project/payload || true
+            exit 1
+          fi
+          if test -f /tmp/rg-extracted/package.json; then
+            PROJECT_ROOT=/tmp/rg-extracted
+          else
+            PROJECT_ROOT="$(find /tmp/rg-extracted -mindepth 1 -maxdepth 4 -type f -name package.json -printf '%h\n' | head -n 1)"
+          fi
+          test -n "${PROJECT_ROOT:-}"
+          echo "$PROJECT_ROOT" > /tmp/project-root
 
       - name: Validate complete source tree
         shell: bash
         run: |
           set -euo pipefail
-          test -f /tmp/rg-project/package.json
-          test -f /tmp/rg-project/index.html
-          test -f /tmp/rg-project/src/main.tsx
-          test -f /tmp/rg-project/src/App.tsx
-          test -f /tmp/rg-project/server/ai-core.js
-          test -f /tmp/rg-project/netlify/functions/ai.mjs
+          PROJECT_ROOT="$(cat /tmp/project-root)"
+          test -f "$PROJECT_ROOT/package.json"
+          test -f "$PROJECT_ROOT/index.html"
+          test -f "$PROJECT_ROOT/src/main.tsx"
+          test -f "$PROJECT_ROOT/src/App.tsx"
+          test -f "$PROJECT_ROOT/server/ai-core.js"
+          test -f "$PROJECT_ROOT/netlify/functions/ai.mjs"
+          test -f "$PROJECT_ROOT/supabase/migrations/20260812_ai_crm_upgrade.sql"
           echo 'Required project files are present.'
 
       - name: Add Netlify production configuration
         shell: bash
         run: |
-          cat > /tmp/rg-project/netlify.toml <<'EOF'
+          set -euo pipefail
+          PROJECT_ROOT="$(cat /tmp/project-root)"
+          cat > "$PROJECT_ROOT/netlify.toml" <<'EOF'
           [build]
             command = "npm run build"
             publish = "dist"
@@ -69,13 +85,14 @@ jobs:
             to = "/index.html"
             status = 200
           EOF
-          printf '\n.netlify/\n' >> /tmp/rg-project/.gitignore
+          grep -qxF '.netlify/' "$PROJECT_ROOT/.gitignore" 2>/dev/null || printf '\n.netlify/\n' >> "$PROJECT_ROOT/.gitignore"
 
       - name: Install and build before publishing source
-        working-directory: /tmp/rg-project
         shell: bash
         run: |
           set -euo pipefail
+          PROJECT_ROOT="$(cat /tmp/project-root)"
+          cd "$PROJECT_ROOT"
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm run build
           test -f dist/index.html
@@ -84,9 +101,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          PROJECT_ROOT="$(cat /tmp/project-root)"
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/rg-project/. .
-          rm -rf node_modules dist .netlify
+          cp -a "$PROJECT_ROOT"/. .
+          rm -rf node_modules dist .netlify .github/workflows/restore-complete-project.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A

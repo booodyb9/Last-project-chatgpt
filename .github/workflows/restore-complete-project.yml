@@ -22,11 +22,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/rg-source /tmp/rg-project /tmp/rg-extracted
-          mkdir -p /tmp/rg-source /tmp/rg-project /tmp/rg-extracted
-          git clone --depth 1 --branch production-clean-2026 https://github.com/booodyb9/Alriyad-glass-work-netlify-.git /tmp/rg-source
-          test -d /tmp/rg-source/.import-xz
-          cat /tmp/rg-source/.import-xz/payload.part-* > /tmp/rg-project/archive.b64
+          rm -rf /tmp/rg-parts /tmp/rg-project /tmp/rg-extracted
+          mkdir -p /tmp/rg-parts /tmp/rg-project /tmp/rg-extracted
+          base='https://raw.githubusercontent.com/booodyb9/Alriyad-glass-work-netlify-/production-clean-2026/.import-xz'
+          for n in 00 01 02 03 04 05 06 07 08 09 10; do
+            f="payload.part-$n"
+            echo "Downloading $f"
+            curl --fail --location --retry 3 --retry-delay 2 "$base/$f" -o "/tmp/rg-parts/$f"
+            test -s "/tmp/rg-parts/$f"
+          done
+          cat /tmp/rg-parts/payload.part-* > /tmp/rg-project/archive.b64
           base64 --decode /tmp/rg-project/archive.b64 > /tmp/rg-project/archive.xz
           xz --test /tmp/rg-project/archive.xz
           xz --decompress --stdout /tmp/rg-project/archive.xz > /tmp/rg-project/payload

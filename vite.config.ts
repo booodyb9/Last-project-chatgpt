@@ -8,7 +8,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        { find: /^react-quill$/, replacement: path.resolve(__dirname, './src/components/SafeQuill.tsx') },
+        { find: /^react-quill$/, replacement: path.resolve(__dirname, './SafeQuill.tsx') },
         { find: '@', replacement: path.resolve(__dirname, '.') },
       ],
     },
@@ -20,9 +20,7 @@ export default defineConfig(() => {
         output: {
           manualChunks: (id) => {
             if (id.includes('node_modules')) {
-              if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router') || id.includes('/react-is/') || id.includes('/react-helmet-async/')) {
-                return 'vendor-react';
-              }
+              if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router') || id.includes('/react-is/') || id.includes('/react-helmet-async/')) return 'vendor-react';
               if (id.includes('/@supabase/')) return 'vendor-supabase';
               if (id.includes('/framer-motion/') || id.includes('/motion/')) return 'vendor-motion';
               if (id.includes('/lucide-react/')) return 'vendor-icons';

@@ -1,0 +1,42 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/api/ai/chat"
+  to = "/.netlify/functions/ai/chat"
+  status = 200
+
+[[redirects]]
+  from = "/api/ai/image"
+  to = "/.netlify/functions/ai/image"
+  status = 200
+
+[[redirects]]
+  from = "/api/ai/vision-assistant"
+  to = "/.netlify/functions/ai/vision-assistant"
+  status = 200
+
+[[redirects]]
+  from = "/api/smart-search"
+  to = "/.netlify/functions/ai/smart-search"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/ai"
+  to = "/.netlify/functions/ai/admin"
+  status = 200
+
+[[redirects]]
+  from = "/api/generate-seo"
+  to = "/.netlify/functions/ai/generate-seo"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

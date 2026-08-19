@@ -42,7 +42,11 @@ jobs:
           cp "$ROOT/config.ts" "$FIX/src/pages/dashboard/config.ts"
           cp "$ROOT/types.ts" "$FIX/src/pages/dashboard/types.ts"
 
-          cat "$ROOT"/.rebuild/part-* | base64 --decode > /tmp/missing-files.tgz
+          : > /tmp/missing-files.tgz
+          for part in "$ROOT"/.rebuild/part-*; do
+            test -s "$part"
+            base64 --decode "$part" >> /tmp/missing-files.tgz
+          done
           tar -tzf /tmp/missing-files.tgz >/dev/null
           tar -xzf /tmp/missing-files.tgz -C "$FIX"
 
@@ -63,6 +67,7 @@ jobs:
               "moduleDetection": "force",
               "allowJs": true,
               "jsx": "react-jsx",
+              "baseUrl": ".",
               "paths": {"@/*": ["./*"]},
               "allowImportingTsExtensions": true,
               "noEmit": true
@@ -89,15 +94,22 @@ jobs:
                   with:
                     node-version: 22
                     cache: npm
-                - run: npm ci
-                - run: npm run lint
-                - run: npm run build
-                - run: test -f dist/index.html
+                - name: Install dependencies
+                  run: npm ci
+                - name: TypeScript validation
+                  run: npm run lint
+                - name: Production build
+                  run: npm run build
+                - name: Verify deploy output
+                  run: test -f dist/index.html
           EOF
 
           test -f "$FIX/src/App.tsx"
+          test -f "$FIX/src/main.tsx"
           test -f "$FIX/src/pages/public/Home.tsx"
           test -f "$FIX/src/pages/Dashboard.tsx"
+          test -f "$FIX/src/components/AnimatedRoutes.tsx"
+          test -f "$FIX/src/lib/supabase.ts"
           test -f "$FIX/src/lib/sanitizeHtml.ts"
           test -f "$FIX/netlify/functions/ai.mjs"
           test -f "$FIX/server/ai-core.js"

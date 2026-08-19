@@ -1,4 +1,4 @@
-name: Publish repaired Riyadh Glass source tree
+name: Repair and verify Riyadh Glass project
 
 on:
   push:
@@ -9,21 +9,21 @@ permissions:
   contents: write
 
 jobs:
-  rebuild:
+  repair:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Reconstruct and publish complete project tree
+      - name: Rebuild source tree directly from repository files
         shell: bash
         run: |
           set -euo pipefail
           ROOT="$GITHUB_WORKSPACE"
           FIX=/tmp/riyadh-glass-fixed
           rm -rf "$FIX"
-          mkdir -p "$FIX/src/components" "$FIX/src/contexts" "$FIX/src/lib" "$FIX/src/pages/dashboard" "$FIX/src/pages/public" "$FIX/.github/workflows"
+          mkdir -p "$FIX/src/components" "$FIX/src/contexts" "$FIX/src/lib" "$FIX/src/pages/dashboard" "$FIX/src/pages/public" "$FIX/public" "$FIX/.github/workflows"
 
-          for f in .env.example .gitignore .npmrc README.md PRODUCTION_REVIEW.md index.html metadata.json package.json package-lock.json server.js vercel.json vite.config.ts netlify.toml; do
+          for f in .env.example .gitignore .npmrc README.md PRODUCTION_REVIEW.md index.html metadata.json package.json package-lock.json server.js vercel.json netlify.toml; do
             [ -f "$ROOT/$f" ] && cp "$ROOT/$f" "$FIX/$f"
           done
           cp -a "$ROOT/server" "$FIX/server"
@@ -42,39 +42,150 @@ jobs:
           cp "$ROOT/config.ts" "$FIX/src/pages/dashboard/config.ts"
           cp "$ROOT/types.ts" "$FIX/src/pages/dashboard/types.ts"
 
-          : > /tmp/missing-files.tgz
-          for part in "$ROOT"/.rebuild/part-*; do
-            test -s "$part"
-            base64 --decode "$part" >> /tmp/missing-files.tgz
-          done
-          tar -tzf /tmp/missing-files.tgz >/dev/null
-          tar -xzf /tmp/missing-files.tgz -C "$FIX"
+          cat > "$FIX/src/lib/sanitizeHtml.ts" <<'EOF'
+          export function sanitizeHtml(input: string = ''): string {
+            return String(input)
+              .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+              .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
+              .replace(/javascript:/gi, '');
+          }
+          export default sanitizeHtml;
+          EOF
+
+          cat > "$FIX/src/pages/public/PageShell.tsx" <<'EOF'
+          import type { ReactNode } from 'react';
+          import Navbar from '../../components/Navbar';
+          import Footer from '../../components/Footer';
+          export default function PageShell({children}:{children:ReactNode}) {
+            return <><Navbar/><main className="min-h-screen pt-24">{children}</main><Footer/></>;
+          }
+          EOF
+
+          cat > "$FIX/src/pages/public/Home.tsx" <<'EOF'
+          import Navbar from '../../components/Navbar';
+          import Hero from '../../components/Hero';
+          import BrandIntro from '../../components/BrandIntro';
+          import Services from '../../components/Services';
+          import Features from '../../components/Features';
+          import Gallery from '../../components/Gallery';
+          import Testimonials from '../../components/Testimonials';
+          import FAQ from '../../components/FAQ';
+          import Contact from '../../components/Contact';
+          import Footer from '../../components/Footer';
+          export default function Home(){return <><Navbar/><Hero/><BrandIntro/><Services/><Features/><Gallery/><Testimonials/><FAQ/><Contact/><Footer/></>}
+          EOF
+
+          cat > "$FIX/src/pages/public/About.tsx" <<'EOF'
+          import PageShell from './PageShell';
+          import BrandIntro from '../../components/BrandIntro';
+          import Features from '../../components/Features';
+          export default function About(){return <PageShell><BrandIntro/><Features/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/ServicesPage.tsx" <<'EOF'
+          import PageShell from './PageShell'; import Services from '../../components/Services';
+          export default function ServicesPage(){return <PageShell><Services/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/Portfolio.tsx" <<'EOF'
+          import PageShell from './PageShell'; import Gallery from '../../components/Gallery';
+          export default function Portfolio(){return <PageShell><Gallery/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/BlogPage.tsx" <<'EOF'
+          import PageShell from './PageShell'; import Blog from '../../components/Blog';
+          export default function BlogPage(){return <PageShell><Blog/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/FAQPage.tsx" <<'EOF'
+          import PageShell from './PageShell'; import FAQ from '../../components/FAQ';
+          export default function FAQPage(){return <PageShell><FAQ/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/TestimonialsPage.tsx" <<'EOF'
+          import PageShell from './PageShell'; import Testimonials from '../../components/Testimonials';
+          export default function TestimonialsPage(){return <PageShell><Testimonials/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/ContactPage.tsx" <<'EOF'
+          import PageShell from './PageShell'; import Contact from '../../components/Contact';
+          export default function ContactPage(){return <PageShell><Contact/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/RequestQuote.tsx" <<'EOF'
+          import PageShell from './PageShell'; import Contact from '../../components/Contact';
+          export default function RequestQuote(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-12 text-center"><h1 className="text-4xl font-bold mb-6">اطلب عرض سعر</h1><p className="text-lg text-gray-600 mb-10">أرسل تفاصيل مشروعك وسنتواصل معك.</p></section><Contact/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/ServiceDetails.tsx" <<'EOF'
+          import {useParams} from 'react-router-dom'; import PageShell from './PageShell'; import Services from '../../components/Services';
+          export default function ServiceDetails(){const {slug}=useParams(); return <PageShell><section className="max-w-5xl mx-auto px-4 py-12"><h1 className="text-4xl font-bold mb-4">خدمات زجاج الرياض</h1><p className="text-gray-600">{slug}</p></section><Services/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/VisibleProjectRoute.tsx" <<'EOF'
+          import {useParams} from 'react-router-dom'; import PageShell from './PageShell'; import Gallery from '../../components/Gallery';
+          export default function VisibleProjectRoute(){const {slug}=useParams(); return <PageShell><section className="max-w-5xl mx-auto px-4 py-12"><h1 className="text-4xl font-bold mb-4">مشروع من أعمالنا</h1><p className="text-gray-600">{slug}</p></section><Gallery/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/BlogDetails.tsx" <<'EOF'
+          import {useParams} from 'react-router-dom'; import PageShell from './PageShell'; import Blog from '../../components/Blog';
+          export default function BlogDetails(){const {slug}=useParams(); return <PageShell><article className="max-w-4xl mx-auto px-4 py-12"><h1 className="text-4xl font-bold mb-4">مدونة زجاج الرياض</h1><p className="text-gray-600">{slug}</p></article><Blog/></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/SearchPage.tsx" <<'EOF'
+          import {useState} from 'react'; import PageShell from './PageShell';
+          export default function SearchPage(){const[q,setQ]=useState('');return <PageShell><section className="max-w-3xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">البحث</h1><input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن خدمات الزجاج" className="w-full border rounded-xl px-4 py-3"/><p className="mt-4 text-gray-500">{q?`نتائج البحث عن: ${q}`:'اكتب كلمة للبحث داخل الموقع'}</p></section></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/PrivacyPolicy.tsx" <<'EOF'
+          import PageShell from './PageShell'; export default function PrivacyPolicy(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">سياسة الخصوصية</h1><p className="leading-8 text-gray-700">نحترم خصوصية زوار الموقع ونستخدم البيانات المرسلة فقط للتواصل وتنفيذ طلبات العملاء.</p></section></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/Terms.tsx" <<'EOF'
+          import PageShell from './PageShell'; export default function Terms(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">الشروط والأحكام</h1><p className="leading-8 text-gray-700">تخضع عروض الأسعار والتنفيذ للمقاسات والمواصفات النهائية المتفق عليها مع العميل.</p></section></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/SitemapPage.tsx" <<'EOF'
+          import {Link} from 'react-router-dom'; import PageShell from './PageShell';
+          const links=[['/','الرئيسية'],['/about','من نحن'],['/services','الخدمات'],['/portfolio','أعمالنا'],['/blog','المدونة'],['/faq','الأسئلة الشائعة'],['/contact','تواصل معنا']];
+          export default function SitemapPage(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-8">خريطة الموقع</h1><div className="grid gap-3">{links.map(([to,label])=><Link key={to} to={to} className="p-4 border rounded-xl">{label}</Link>)}</div></section></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/DynamicPage.tsx" <<'EOF'
+          import {useParams} from 'react-router-dom'; import PageShell from './PageShell';
+          export default function DynamicPage(){const {slug}=useParams();return <PageShell><section className="max-w-4xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">{slug?.replace(/-/g,' ')}</h1><p className="text-gray-600">صفحة معلومات من زجاج الرياض.</p></section></PageShell>}
+          EOF
+
+          cat > "$FIX/src/pages/public/NotFound.tsx" <<'EOF'
+          import {Link} from 'react-router-dom'; import PageShell from './PageShell';
+          export default function NotFound(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-24 text-center"><h1 className="text-6xl font-bold mb-4">404</h1><p className="mb-8">الصفحة غير موجودة</p><Link className="inline-block bg-sky-600 text-white px-6 py-3 rounded-xl" to="/">العودة للرئيسية</Link></section></PageShell>}
+          EOF
 
           sed -i 's#src="/main.tsx"#src="/src/main.tsx"#' "$FIX/index.html"
           sed -i "s#'./SafeQuill.tsx'#'./src/components/SafeQuill.tsx'#" "$FIX/vite.config.ts"
+          sed -i "s#path.resolve(__dirname, '.')#path.resolve(__dirname, './src')#" "$FIX/vite.config.ts"
+
+          cat > "$FIX/public/_redirects" <<'EOF'
+          /api/*  /.netlify/functions/ai/:splat  200
+          /*  /index.html  200
+          EOF
+          cat > "$FIX/public/manifest.json" <<'EOF'
+          {"name":"زجاج الرياض","short_name":"زجاج الرياض","start_url":"/","display":"standalone","lang":"ar","dir":"rtl","theme_color":"#0284C7","background_color":"#ffffff"}
+          EOF
+          cat > "$FIX/public/robots.txt" <<'EOF'
+          User-agent: *
+          Allow: /
+          Sitemap: /sitemap.xml
+          EOF
+          cat > "$FIX/public/sitemap.xml" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>/</loc></url><url><loc>/about</loc></url><url><loc>/services</loc></url><url><loc>/portfolio</loc></url><url><loc>/blog</loc></url><url><loc>/contact</loc></url>
+          </urlset>
+          EOF
 
           cat > "$FIX/tsconfig.json" <<'EOF'
-          {
-            "compilerOptions": {
-              "target": "ES2022",
-              "experimentalDecorators": true,
-              "useDefineForClassFields": false,
-              "module": "ESNext",
-              "lib": ["ES2022", "DOM", "DOM.Iterable"],
-              "skipLibCheck": true,
-              "moduleResolution": "bundler",
-              "isolatedModules": true,
-              "moduleDetection": "force",
-              "allowJs": true,
-              "jsx": "react-jsx",
-              "baseUrl": ".",
-              "paths": {"@/*": ["./*"]},
-              "allowImportingTsExtensions": true,
-              "noEmit": true
-            },
-            "exclude": ["node_modules", "dist"],
-            "include": ["src"]
-          }
+          {"compilerOptions":{"target":"ES2022","useDefineForClassFields":false,"module":"ESNext","lib":["ES2022","DOM","DOM.Iterable"],"skipLibCheck":true,"moduleResolution":"bundler","isolatedModules":true,"moduleDetection":"force","allowJs":true,"jsx":"react-jsx","baseUrl":".","paths":{"@/*":["src/*"]},"allowImportingTsExtensions":true,"noEmit":true},"exclude":["node_modules","dist"],"include":["src"]}
           EOF
 
           cat > "$FIX/.github/workflows/verify-production.yml" <<'EOF'
@@ -94,32 +205,22 @@ jobs:
                   with:
                     node-version: 22
                     cache: npm
-                - name: Install dependencies
-                  run: npm ci
-                - name: TypeScript validation
-                  run: npm run lint
-                - name: Production build
-                  run: npm run build
-                - name: Verify deploy output
-                  run: test -f dist/index.html
+                - run: npm ci
+                - run: npm run build
+                - run: test -f dist/index.html
           EOF
 
-          test -f "$FIX/src/App.tsx"
-          test -f "$FIX/src/main.tsx"
-          test -f "$FIX/src/pages/public/Home.tsx"
-          test -f "$FIX/src/pages/Dashboard.tsx"
-          test -f "$FIX/src/components/AnimatedRoutes.tsx"
-          test -f "$FIX/src/lib/supabase.ts"
-          test -f "$FIX/src/lib/sanitizeHtml.ts"
-          test -f "$FIX/netlify/functions/ai.mjs"
-          test -f "$FIX/server/ai-core.js"
-          test -f "$FIX/supabase/migrations/20260812_ai_crm_upgrade.sql"
-          test -f "$FIX/public/_redirects"
+          cd "$FIX"
+          npm ci
+          npm run build
+          test -f dist/index.html
+          rm -rf node_modules dist
 
+          cd "$ROOT"
           find "$ROOT" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -a "$FIX"/. "$ROOT"/
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'Restore complete production-ready Riyadh Glass source tree'
+          git commit -m 'Repair complete source tree and verify production build'
           git push

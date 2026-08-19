@@ -1,4 +1,4 @@
-name: Verify Riyadh Glass production build
+name: Rebuild complete Riyadh Glass source tree
 
 on:
   push:
@@ -6,22 +6,138 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
+  rebuild:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: TypeScript check
-        run: npm run lint
-      - name: Production build
-        run: npm run build
-      - name: Verify deploy output
-        run: test -f dist/index.html
+
+      - name: Reconstruct complete project tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$GITHUB_WORKSPACE"
+          FIX=/tmp/riyadh-glass-fixed
+          rm -rf "$FIX"
+          mkdir -p "$FIX/src/components" "$FIX/src/contexts" "$FIX/src/lib" "$FIX/src/pages/dashboard" "$FIX/src/pages/public" "$FIX/.github/workflows"
+
+          for f in .env.example .gitignore .npmrc README.md PRODUCTION_REVIEW.md index.html metadata.json package.json package-lock.json server.js vercel.json vite.config.ts netlify.toml; do
+            [ -f "$ROOT/$f" ] && cp "$ROOT/$f" "$FIX/$f"
+          done
+          cp -a "$ROOT/server" "$FIX/server"
+          cp -a "$ROOT/netlify" "$FIX/netlify"
+
+          for f in App.tsx main.tsx index.css new-theme.css vite-env.d.ts translations.ts; do cp "$ROOT/$f" "$FIX/src/$f"; done
+          for n in AuthContext ContentContext LanguageContext; do cp "$ROOT/$n.tsx" "$FIX/src/contexts/$n.tsx"; done
+          for n in leads safeJson settings supabase; do cp "$ROOT/$n.ts" "$FIX/src/lib/$n.ts"; done
+
+          components=(AILeadAssistant AIVisionAssistant AdminRoute AmbientBackground AnimatedRoutes Blog BrandIntro Contact CostCalculator DeferredPublicEnhancements DynamicContactLinks ErrorBoundary FAQ Features FloatingWhatsApp Footer Gallery GallerySlider GlassVisualizer Hero HeroOld HomepageSectionController LazyImage Maintenance Navbar PageProgressBar Process ProjectStats SEO SafeQuill ScrollToTop SectionCTA Services SmartLeadPrompt Testimonials TopMarqueeGallery TrustedPartners WhatsAppInlineCTA)
+          for n in "${components[@]}"; do cp "$ROOT/$n.tsx" "$FIX/src/components/$n.tsx"; done
+
+          cp "$ROOT/Dashboard.tsx" "$FIX/src/pages/Dashboard.tsx"
+          dashboard=(AI_SEO_Dashboard ArrayEditor BulkGalleryUpload ContentManager ConversionAnalytics DashboardHome DashboardLayout DriveBackup FormBuilder HomepageBuilder LeadsManager MediaLibrary Messages PagesManager PagesManagerV2 PerformanceTool PortfolioManager PortfolioManagerV2 SiteSettings SystemAdmin)
+          for n in "${dashboard[@]}"; do cp "$ROOT/$n.tsx" "$FIX/src/pages/dashboard/$n.tsx"; done
+          cp "$ROOT/config.ts" "$FIX/src/pages/dashboard/config.ts"
+          cp "$ROOT/types.ts" "$FIX/src/pages/dashboard/types.ts"
+
+          cat "$ROOT"/.rebuild/part-* | base64 --decode > /tmp/missing-files.tgz
+          tar -tzf /tmp/missing-files.tgz >/dev/null
+          tar -xzf /tmp/missing-files.tgz -C "$FIX"
+
+          sed -i 's#src="/main.tsx"#src="/src/main.tsx"#' "$FIX/index.html"
+          sed -i "s#'./SafeQuill.tsx'#'./src/components/SafeQuill.tsx'#" "$FIX/vite.config.ts"
+
+          cat > "$FIX/tsconfig.json" <<'EOF'
+          {
+            "compilerOptions": {
+              "target": "ES2022",
+              "experimentalDecorators": true,
+              "useDefineForClassFields": false,
+              "module": "ESNext",
+              "lib": ["ES2022", "DOM", "DOM.Iterable"],
+              "skipLibCheck": true,
+              "moduleResolution": "bundler",
+              "isolatedModules": true,
+              "moduleDetection": "force",
+              "allowJs": true,
+              "jsx": "react-jsx",
+              "paths": {"@/*": ["./*"]},
+              "allowImportingTsExtensions": true,
+              "noEmit": true
+            },
+            "exclude": ["node_modules", "dist"],
+            "include": ["src"]
+          }
+          EOF
+
+          cat > "$FIX/.github/workflows/verify-production.yml" <<'EOF'
+          name: Verify production build
+          on:
+            push:
+              branches: [main]
+            workflow_dispatch:
+          permissions:
+            contents: read
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: 22
+                    cache: npm
+                - run: npm ci
+                - run: npm run lint
+                - run: npm run build
+                - run: test -f dist/index.html
+          EOF
+
+          test -f "$FIX/src/App.tsx"
+          test -f "$FIX/src/main.tsx"
+          test -f "$FIX/src/pages/public/Home.tsx"
+          test -f "$FIX/src/pages/Dashboard.tsx"
+          test -f "$FIX/src/components/AnimatedRoutes.tsx"
+          test -f "$FIX/src/lib/supabase.ts"
+          test -f "$FIX/src/lib/sanitizeHtml.ts"
+          test -f "$FIX/netlify/functions/ai.mjs"
+          test -f "$FIX/server/ai-core.js"
+          test -f "$FIX/supabase/migrations/20260812_ai_crm_upgrade.sql"
+          test -f "$FIX/public/_redirects"
+
+      - name: Install and run complete TypeScript validation
+        working-directory: /tmp/riyadh-glass-fixed
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run lint
+
+      - name: Run production build
+        working-directory: /tmp/riyadh-glass-fixed
+        run: |
+          set -euo pipefail
+          npm run build
+          test -f dist/index.html
+
+      - name: Publish repaired source only after all checks pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          FIX=/tmp/riyadh-glass-fixed
+          find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$FIX"/. "$GITHUB_WORKSPACE"/
+          rm -rf "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/dist" "$GITHUB_WORKSPACE/.netlify"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Restore complete production-ready Riyadh Glass source tree'
+          git push

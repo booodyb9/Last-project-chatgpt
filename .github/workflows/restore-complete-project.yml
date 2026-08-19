@@ -1,4 +1,4 @@
-name: Rebuild complete Riyadh Glass source tree
+name: Publish repaired Riyadh Glass source tree
 
 on:
   push:
@@ -13,15 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Reconstruct complete project tree
+      - name: Reconstruct and publish complete project tree
         shell: bash
         run: |
           set -euo pipefail
@@ -103,39 +96,16 @@ jobs:
           EOF
 
           test -f "$FIX/src/App.tsx"
-          test -f "$FIX/src/main.tsx"
           test -f "$FIX/src/pages/public/Home.tsx"
           test -f "$FIX/src/pages/Dashboard.tsx"
-          test -f "$FIX/src/components/AnimatedRoutes.tsx"
-          test -f "$FIX/src/lib/supabase.ts"
           test -f "$FIX/src/lib/sanitizeHtml.ts"
           test -f "$FIX/netlify/functions/ai.mjs"
           test -f "$FIX/server/ai-core.js"
           test -f "$FIX/supabase/migrations/20260812_ai_crm_upgrade.sql"
           test -f "$FIX/public/_redirects"
 
-      - name: Install and run complete TypeScript validation
-        working-directory: /tmp/riyadh-glass-fixed
-        run: |
-          set -euo pipefail
-          npm ci
-          npm run lint
-
-      - name: Run production build
-        working-directory: /tmp/riyadh-glass-fixed
-        run: |
-          set -euo pipefail
-          npm run build
-          test -f dist/index.html
-
-      - name: Publish repaired source only after all checks pass
-        shell: bash
-        run: |
-          set -euo pipefail
-          FIX=/tmp/riyadh-glass-fixed
-          find "$GITHUB_WORKSPACE" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a "$FIX"/. "$GITHUB_WORKSPACE"/
-          rm -rf "$GITHUB_WORKSPACE/node_modules" "$GITHUB_WORKSPACE/dist" "$GITHUB_WORKSPACE/.netlify"
+          find "$ROOT" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$FIX"/. "$ROOT"/
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A

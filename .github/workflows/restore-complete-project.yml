@@ -1,114 +1,27 @@
-name: Restore and verify complete Riyadh Glass project
+name: Verify Riyadh Glass production build
 
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/restore-complete-project.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  restore:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-
-      - name: Restore preserved reviewed zip
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/rg-project
-          mkdir -p /tmp/rg-project
-          git show 93491c4c729aee4b982f4a8645be6282c6f6d446:riyadh-glass-production-fixed.zip > /tmp/riyadh-glass-production-fixed.zip
-          unzip -tq /tmp/riyadh-glass-production-fixed.zip
-          unzip -q /tmp/riyadh-glass-production-fixed.zip -d /tmp/rg-project
-
-      - name: Validate complete source tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f /tmp/rg-project/package.json
-          test -f /tmp/rg-project/index.html
-          test -f /tmp/rg-project/src/main.tsx
-          test -f /tmp/rg-project/src/App.tsx
-          test -f /tmp/rg-project/server/ai-core.js
-          test -f /tmp/rg-project/netlify/functions/ai.mjs
-          test -f /tmp/rg-project/supabase/migrations/20260812_ai_crm_upgrade.sql
-          echo 'Required project files are present.'
-
-      - name: Add Netlify production configuration
-        shell: bash
-        run: |
-          cat > /tmp/rg-project/netlify.toml <<'EOF'
-          [build]
-            command = "npm run build"
-            publish = "dist"
-            functions = "netlify/functions"
-
-          [build.environment]
-            NODE_VERSION = "22"
-
-          [[redirects]]
-            from = "/api/ai/chat"
-            to = "/.netlify/functions/ai/chat"
-            status = 200
-
-          [[redirects]]
-            from = "/api/ai/image"
-            to = "/.netlify/functions/ai/image"
-            status = 200
-
-          [[redirects]]
-            from = "/api/ai/vision-assistant"
-            to = "/.netlify/functions/ai/vision-assistant"
-            status = 200
-
-          [[redirects]]
-            from = "/api/smart-search"
-            to = "/.netlify/functions/ai/smart-search"
-            status = 200
-
-          [[redirects]]
-            from = "/api/admin/ai"
-            to = "/.netlify/functions/ai/admin"
-            status = 200
-
-          [[redirects]]
-            from = "/api/generate-seo"
-            to = "/.netlify/functions/ai/generate-seo"
-            status = 200
-
-          [[redirects]]
-            from = "/*"
-            to = "/index.html"
-            status = 200
-          EOF
-          grep -qxF '.netlify/' /tmp/rg-project/.gitignore 2>/dev/null || printf '\n.netlify/\n' >> /tmp/rg-project/.gitignore
-
-      - name: Install and build before publishing source
-        working-directory: /tmp/rg-project
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm ci
-          npm run build
-          test -f dist/index.html
-
-      - name: Replace repository only after successful build
-        shell: bash
-        run: |
-          set -euo pipefail
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/rg-project/. .
-          rm -rf node_modules dist .netlify
-          rm -f .github/workflows/restore-complete-project.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '418982053+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git commit -m 'Restore complete verified Riyadh Glass project'
-          git push
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript check
+        run: npm run lint
+      - name: Production build
+        run: npm run build
+      - name: Verify deploy output
+        run: test -f dist/index.html

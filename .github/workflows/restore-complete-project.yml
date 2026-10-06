@@ -2,7 +2,7 @@ name: Repair and verify Riyadh Glass project
 
 on:
   push:
-    branches: [main]
+    branches: [cms-supabase-netlify]
   workflow_dispatch:
 
 permissions:

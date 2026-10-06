@@ -1,4 +1,4 @@
-name: Repair and verify Riyadh Glass project
+name: Repair and verify Riyadh Glass project (CMS branch)
 
 on:
   push:

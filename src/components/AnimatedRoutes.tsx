@@ -53,6 +53,8 @@ export default function AnimatedRoutes() {
             <Route path="/privacy-policy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
             <Route path="/terms" element={<PageWrapper><Terms /></PageWrapper>} />
             <Route path="/dashboard/*" element={<AdminRoute><Dashboard /></AdminRoute>} />
+            <Route path="/cms/*" element={<AdminRoute><Dashboard /></AdminRoute>} />
+            <Route path="/admin/*" element={<AdminRoute><Dashboard /></AdminRoute>} />
             <Route path="/:slug" element={<PageWrapper><DynamicPage /></PageWrapper>} />
             <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
           </Routes>

@@ -1,0 +1,2 @@
+import {useParams} from 'react-router-dom'; import PageShell from './PageShell'; import Services from '../../components/Services';
+export default function ServiceDetails(){const {slug}=useParams(); return <PageShell><section className="max-w-5xl mx-auto px-4 py-12"><h1 className="text-4xl font-bold mb-4">خدمات زجاج الرياض</h1><p className="text-gray-600">{slug}</p></section><Services/></PageShell>}

@@ -1,0 +1,2 @@
+import {useState} from 'react'; import PageShell from './PageShell';
+export default function SearchPage(){const[q,setQ]=useState('');return <PageShell><section className="max-w-3xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">البحث</h1><input value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث عن خدمات الزجاج" className="w-full border rounded-xl px-4 py-3"/><p className="mt-4 text-gray-500">{q?`نتائج البحث عن: ${q}`:'اكتب كلمة للبحث داخل الموقع'}</p></section></PageShell>}

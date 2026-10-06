@@ -1,0 +1,1 @@
+import PageShell from './PageShell'; export default function PrivacyPolicy(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">سياسة الخصوصية</h1><p className="leading-8 text-gray-700">نحترم خصوصية زوار الموقع ونستخدم البيانات المرسلة فقط للتواصل وتنفيذ طلبات العملاء.</p></section></PageShell>}

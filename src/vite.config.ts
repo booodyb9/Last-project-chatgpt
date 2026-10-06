@@ -8,8 +8,8 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        { find: /^react-quill$/, replacement: path.resolve(__dirname, './src/components/SafeQuill.tsx') },
-        { find: '@', replacement: path.resolve(__dirname, './src') },
+        { find: /^react-quill$/, replacement: path.resolve(__dirname, './SafeQuill.tsx') },
+        { find: '@', replacement: path.resolve(__dirname, '.') },
       ],
     },
     build: {

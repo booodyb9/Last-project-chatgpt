@@ -1,0 +1,1 @@
+import PageShell from './PageShell'; export default function Terms(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-16"><h1 className="text-4xl font-bold mb-6">الشروط والأحكام</h1><p className="leading-8 text-gray-700">تخضع عروض الأسعار والتنفيذ للمقاسات والمواصفات النهائية المتفق عليها مع العميل.</p></section></PageShell>}

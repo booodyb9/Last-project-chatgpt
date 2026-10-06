@@ -1,0 +1,2 @@
+import {Link} from 'react-router-dom'; import PageShell from './PageShell';
+export default function NotFound(){return <PageShell><section className="max-w-4xl mx-auto px-4 py-24 text-center"><h1 className="text-6xl font-bold mb-4">404</h1><p className="mb-8">الصفحة غير موجودة</p><Link className="inline-block bg-sky-600 text-white px-6 py-3 rounded-xl" to="/">العودة للرئيسية</Link></section></PageShell>}

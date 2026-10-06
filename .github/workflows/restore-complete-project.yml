@@ -1,4 +1,4 @@
-name: Repair and verify Riyadh Glass project (CMS branch v2)
+name: Repair and verify Riyadh Glass project (CMS branch final)
 
 on:
   push:
@@ -187,28 +187,6 @@ jobs:
 
           cat > "$FIX/tsconfig.json" <<'EOF'
           {"compilerOptions":{"target":"ES2022","useDefineForClassFields":false,"module":"ESNext","lib":["ES2022","DOM","DOM.Iterable"],"skipLibCheck":true,"moduleResolution":"bundler","isolatedModules":true,"moduleDetection":"force","allowJs":true,"jsx":"react-jsx","baseUrl":".","paths":{"@/*":["src/*"]},"allowImportingTsExtensions":true,"noEmit":true},"exclude":["node_modules","dist"],"include":["src"]}
-          EOF
-
-          cat > "$FIX/.github/workflows/verify-production.yml" <<'EOF'
-          name: Verify production build
-          on:
-            push:
-              branches: [main]
-            workflow_dispatch:
-          permissions:
-            contents: read
-          jobs:
-            build:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-                    cache: npm
-                - run: npm ci
-                - run: npm run build
-                - run: test -f dist/index.html
           EOF
 
           cd "$FIX"

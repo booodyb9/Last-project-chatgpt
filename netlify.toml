@@ -18,3 +18,5 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Force production rebuild with the React/Vite entrypoint

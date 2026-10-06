@@ -1,4 +1,4 @@
-name: Repair and verify Riyadh Glass project (CMS branch)
+name: Repair and verify Riyadh Glass project (CMS branch v2)
 
 on:
   push:
@@ -28,6 +28,7 @@ jobs:
           done
           cp -a "$ROOT/server" "$FIX/server"
           cp -a "$ROOT/netlify" "$FIX/netlify"
+          cp "$ROOT/vite.config.ts" "$FIX/vite.config.ts"
 
           for f in App.tsx main.tsx index.css new-theme.css vite-env.d.ts translations.ts vite.config.ts; do cp "$ROOT/$f" "$FIX/src/$f"; done
           for n in AuthContext ContentContext LanguageContext; do cp "$ROOT/$n.tsx" "$FIX/src/contexts/$n.tsx"; done

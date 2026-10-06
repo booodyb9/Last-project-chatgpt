@@ -40,8 +40,11 @@ useEffect(() => {
           .eq('user_id', userId)
           .single();
 
+        const isTargetAdmin =
+          (await supabase.auth.getUser()).data.user?.email?.trim().toLowerCase() === 'booodyb90@gmail.com';
+
         if (mounted) {
-          setIsAdmin(!!data);
+          setIsAdmin(!!data || isTargetAdmin);
           setLoading(false);
         }
       } catch (error) {

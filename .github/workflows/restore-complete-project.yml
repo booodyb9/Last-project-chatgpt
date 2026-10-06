@@ -29,7 +29,7 @@ jobs:
           cp -a "$ROOT/server" "$FIX/server"
           cp -a "$ROOT/netlify" "$FIX/netlify"
 
-          for f in App.tsx main.tsx index.css new-theme.css vite-env.d.ts translations.ts; do cp "$ROOT/$f" "$FIX/src/$f"; done
+          for f in App.tsx main.tsx index.css new-theme.css vite-env.d.ts translations.ts vite.config.ts; do cp "$ROOT/$f" "$FIX/src/$f"; done
           for n in AuthContext ContentContext LanguageContext; do cp "$ROOT/$n.tsx" "$FIX/src/contexts/$n.tsx"; done
           for n in leads safeJson settings supabase; do cp "$ROOT/$n.ts" "$FIX/src/lib/$n.ts"; done
 
